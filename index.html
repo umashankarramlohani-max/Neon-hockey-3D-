@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>Neon Hockey Survival - Play & Earn</title>
+    <meta name="description" content="Fast-paced neon air hockey game with 24h missions, coin rewards, withdrawal system, and admin panel." />
+    <style>
+      :root {
+        --primary-blue: #2563eb;
+        --primary-dark: #1d4ed8;
+        --accent-red: #dc2626;
+        --accent-amber: #d97706;
+        --accent-green: #16a34a;
+        --bg-white: #ffffff;
+        --bg-slate: #f8fafc;
+        --border-color: #e2e8f0;
+        --text-primary: #0f172a;
+        --text-secondary: #475569;
+        --banner-height: 60px;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+      html, body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background-color: #ffffff;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        color: #0f172a;
+      }
+      #app-container {
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+        max-width: 520px;
+        margin: 0 auto;
+        background: #ffffff;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        border-left: 1px solid #e2e8f0;
+        border-right: 1px solid #e2e8f0;
+      }
+      .screen-view {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: calc(100% - var(--banner-height));
+        display: flex;
+        flex-direction: column;
+        background: #ffffff;
+      }
+      .hidden { display: none !important; }
+      .header-bar {
+        padding: 12px 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: #ffffff;
+        border-bottom: 1px solid #e2e8f0;
+      }
+      .neon-card {
+        background: #ffffff;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 16px;
+        margin: 10px 16px;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.03);
+      }
+      .neon-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 12px 20px;
+        border-radius: 12px;
+        font-weight: 800;
+        font-size: 14px;
+        cursor: pointer;
+        border: none;
+        transition: transform 0.1s, opacity 0.2s;
+      }
+      .btn-cyan { background: #2563eb; color: #ffffff; box-shadow: 0 4px 12px rgba(37,99,235,0.3); }
+      .btn-cyan:active { transform: scale(0.97); }
+      .btn-cyan:disabled { background: #94a3b8; cursor: not-allowed; box-shadow: none; opacity: 0.7; }
+      
+      /* Canvas Arena */
+      #canvas-wrapper {
+        position: relative;
+        flex: 1;
+        width: 100%;
+        overflow: hidden;
+        background: #0f172a;
+      }
+      canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        touch-action: none;
+      }
+      /* Modals */
+      .game-modal {
+        position: absolute;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.75);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 100;
+        padding: 16px;
+      }
+      .modal-card {
+        background: #ffffff;
+        border-radius: 20px;
+        padding: 24px;
+        width: 100%;
+        max-width: 420px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.25);
+      }
+      /* Toast */
+      #toast-msg {
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #0f172a;
+        color: #ffffff;
+        padding: 10px 18px;
+        border-radius: 30px;
+        font-size: 13px;
+        font-weight: 700;
+        z-index: 999;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        transition: opacity 0.3s;
+      }
+      /* Bottom Ad Space */
+      #admob-banner {
+        height: var(--banner-height);
+        background: #f1f5f9;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: 700;
+        color: #64748b;
+        border-top: 1px solid #e2e8f0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app-container">
+      <div id="toast-msg" class="hidden"></div>
+
+      <!-- 1. HOME SCREEN -->
+      <section id="screen-home" class="screen-view">
+        <header class="header-bar">
+          <div>
+            <div style="font-weight: 800; font-size: 16px; color: #0f172a;">Player #HK-1001</div>
+            <div style="font-size: 12px; color: #64748b;">100 Coins = ₹1 • 24h Cycle</div>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <!-- 24h 10 Coins Claim (Once per Day) -->
+            <button id="btn-daily-gift" type="button" onclick="claimDailyGiftAction()" style="background: #fef3c7; color: #b45309; border: 1.5px solid #fde68a; border-radius: 10px; padding: 7px 12px; font-size: 12px; font-weight: 800; cursor: pointer;">
+              🎁 <span id="daily-gift-label">+10 Gift</span>
+            </button>
+            <button type="button" onclick="openHelpGuideModal()" style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 7px 11px; font-weight: 800; cursor: pointer;">📖</button>
+          </div>
+        </header>
+
+        <!-- Stats & Play Limit Card -->
+        <div class="neon-card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div style="font-weight: 800; font-size: 15px;">START HOCKEY MATCH</div>
+            <span id="badge-plays-status" style="background: #fef08a; color: #854d0e; font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 6px;">20 Left</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 14px; font-size: 13px;">
+            <span style="color: #64748b;">Games Left Today:</span>
+            <strong id="home-plays-count" style="color: #2563eb; font-size: 15px;">20 / 20</strong>
+          </div>
+          <button id="btn-start-game" type="button" onclick="startSurvivalGame()" class="neon-btn btn-cyan" style="width: 100%;">
+            <span>PLAY NOW</span>
+          </button>
+        </div>
+
+        <!-- 24h Countdown Banner -->
+        <div class="neon-card" style="background: #eff6ff; border-color: #bfdbfe; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div style="font-size: 11px; font-weight: 800; color: #1e40af; text-transform: uppercase;">24-Hour Refresh Cycle</div>
+            <div id="home-24h-timer" style="font-size: 16px; font-weight: 900; color: #1e3a8a; font-family: monospace;">24:00:00</div>
+          </div>
+          <button type="button" onclick="checkAndForceDailyReset(false)" style="background: #ffffff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 6px 10px; font-size: 12px; font-weight: 800; color: #1d4ed8; cursor: pointer;">Sync</button>
+        </div>
+
+        <!-- Wallet / Coin Card -->
+        <div class="neon-card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <span style="font-weight: 800; color: #0f172a;">WALLET BALANCE</span>
+            <span id="wallet-coins" style="font-size: 18px; font-weight: 900; color: #d97706;">🪙 0 Coins</span>
+          </div>
+          <div style="font-size: 12px; color: #64748b; margin-bottom: 12px;">Earn +15 coins on scoring goals! 100 Coins = ₹1.</div>
+          <button type="button" onclick="openWithdrawModal()" class="neon-btn" style="background: #16a34a; color: #fff; width: 100%;">
+            <span>WITHDRAW CASH</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- 2. GAME ARENA SCREEN -->
+      <section id="screen-game" class="screen-view hidden">
+        <div style="padding: 10px 16px; background: #0f172a; color: #ffffff; display: flex; justify-content: space-between; align-items: center;">
+          <div style="font-weight: 800; font-size: 14px;">Score: <span id="game-score" style="color: #38bdf8;">0</span></div>
+          <div style="font-weight: 800; font-size: 14px; color: #facc15;">Bot <span id="bot-score">0</span></div>
+          <button type="button" onclick="stopCurrentGame()" style="background: #334155; color: #ffffff; border: none; padding: 6px 12px; border-radius: 8px; font-weight: 800; cursor: pointer;">Exit</button>
+        </div>
+        <div id="canvas-wrapper">
+          <canvas id="hockey-canvas"></canvas>
+        </div>
+      </section>
+
+      <!-- 3. MODAL: HELP & FULL CODE EXPORT -->
+      <div id="modal-help-guide" class="game-modal hidden">
+        <div class="modal-card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+            <h3 style="font-weight: 900; font-size: 16px;">📖 HOW TO PLAY & SOURCE</h3>
+            <button type="button" onclick="closeHelpGuideModal()" style="border: none; background: none; font-size: 18px; cursor: pointer;">✕</button>
+          </div>
+          <p style="font-size: 13px; color: #475569; margin-bottom: 12px; line-height: 1.5;">
+            • Goal score karne par hi points milte hain.<br/>
+            • 24h me 20 games limit hoti hai.<br/>
+            • Daily +10 Coins 24h me sirf 1 baar claim hota hai.<br/>
+            • Bot puck ko wall par jam nahi kar sakta (anti-pinning logic active).
+          </p>
+          <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 12px; padding: 12px; margin-bottom: 16px;">
+            <div style="font-weight: 800; font-size: 12px; color: #0f172a; margin-bottom: 6px;">💻 Complete Single-File Code:</div>
+            <div style="display: flex; gap: 8px;">
+              <button type="button" onclick="downloadFullHTML()" style="flex: 1; background: #2563eb; color: #fff; border: none; padding: 8px; border-radius: 8px; font-weight: 800; cursor: pointer; font-size: 12px;">📥 Download HTML</button>
+              <button type="button" onclick="copyFullHTML()" style="flex: 1; background: #ffffff; border: 1px solid #2563eb; color: #2563eb; padding: 8px; border-radius: 8px; font-weight: 800; cursor: pointer; font-size: 12px;">📋 Copy Code</button>
+            </div>
+          </div>
+          <button type="button" onclick="closeHelpGuideModal()" class="neon-btn btn-cyan" style="width: 100%;">CLOSE</button>
+        </div>
+      </div>
+
+      <!-- 4. ADMOB BANNER SPACE (60px) -->
+      <footer id="admob-banner">
+        <span>AdMob Banner Space (320x50)</span>
+      </footer>
+    </div>
+
+    <!-- JAVASCRIPT GAME ENGINE -->
+    <script>
+      (function() {
+        'use strict';
+
+        // 1. Storage & 24h Cycle Logic
+        const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+        const MAX_DAILY_PLAYS = 20;
+
+        function getStorage(key, def) {
+          const v = localStorage.getItem('hockey_' + key);
+          return v !== null ? v : def;
+        }
+        function setStorage(key, val) {
+          localStorage.setItem('hockey_' + key, val);
+        }
+
+        function checkAndResetDailyCycle(force = false) {
+          const now = Date.now();
+          const start = parseInt(getStorage('cycle_start', '0'), 10);
+          if (force || !start || (now - start >= TWENTY_FOUR_HOURS_MS)) {
+            setStorage('cycle_start', now.toString());
+            setStorage('plays_count', '0');
+            setStorage('daily_gift_claimed', 'false');
+            return true;
+          }
+          return false;
+        }
+
+        function getRemainingCycleTime() {
+          const start = parseInt(getStorage('cycle_start', '0'), 10);
+          if (!start) return TWENTY_FOUR_HOURS_MS;
+          const elapsed = Date.now() - start;
+          return Math.max(0, TWENTY_FOUR_HOURS_MS - elapsed);
+        }
+
+        function formatHMS(ms) {
+          const totalSec = Math.floor(ms / 1000);
+          const h = String(Math.floor(totalSec / 3600)).padStart(2, '0');
+          const m = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
+          const s = String(totalSec % 60).padStart(2, '0');
+          return `${h}:${m}:${s}`;
+        }
+
+        // 2. UI Updates
+        function updateUI() {
+          checkAndResetDailyCycle();
+          const plays = parseInt(getStorage('plays_count', '0'), 10);
+          const remainingPlays = Math.max(0, MAX_DAILY_PLAYS - plays);
+          const coins = parseInt(getStorage('coins', '50'), 10);
+          const isClaimed = getStorage('daily_gift_claimed', 'false') === 'true';
+
+          // Daily gift button update
+          const giftBtn = document.getElementById('btn-daily-gift');
+          const giftLbl = document.getElementById('daily-gift-label');
+          if (isClaimed) {
+            giftBtn.disabled = true;
+            giftBtn.style.pointerEvents = 'none';
+            giftBtn.style.background = '#f1f5f9';
+            giftBtn.style.color = '#94a3b8';
+            giftBtn.style.borderColor = '#cbd5e1';
+            giftLbl.textContent = 'Claimed ✓';
+          } else {
+            giftBtn.disabled = false;
+            giftBtn.style.pointerEvents = 'auto';
+            giftBtn.style.background = '#fef3c7';
+            giftBtn.style.color = '#b45309';
+            giftBtn.style.borderColor = '#fde68a';
+            giftLbl.textContent = '+10 Gift';
+          }
+
+          document.getElementById('home-plays-count').textContent = `${remainingPlays} / ${MAX_DAILY_PLAYS}`;
+          document.getElementById('badge-plays-status').textContent = `${remainingPlays} Left`;
+          document.getElementById('wallet-coins').textContent = `🪙 ${coins} Coins`;
+
+          const startBtn = document.getElementById('btn-start-game');
+          if (remainingPlays <= 0) {
+            startBtn.disabled = true;
+            startBtn.innerHTML = '<span>DAILY LIMIT REACHED (24H LOCK)</span>';
+          } else {
+            startBtn.disabled = false;
+            startBtn.innerHTML = '<span>PLAY NOW</span>';
+          }
+        }
+
+        function showToast(msg) {
+          const el = document.getElementById('toast-msg');
+          el.textContent = msg;
+          el.classList.remove('hidden');
+          el.style.opacity = '1';
+          setTimeout(() => {
+            el.style.opacity = '0';
+            setTimeout(() => el.classList.add('hidden'), 300);
+          }, 2400);
+        }
+
+        // 3. Claim Daily Gift (Strictly Once per 24 hours)
+        window.claimDailyGiftAction = function() {
+          checkAndResetDailyCycle();
+          const isClaimed = getStorage('daily_gift_claimed', 'false') === 'true';
+          if (isClaimed) {
+            showToast('Already claimed! Next claim unlocks tomorrow.');
+            return;
+          }
+          const curCoins = parseInt(getStorage('coins', '50'), 10);
+          setStorage('coins', (curCoins + 10).toString());
+          setStorage('daily_gift_claimed', 'true');
+          showToast('🎁 +10 Coins claimed! Unlocks next day.');
+          updateUI();
+        };
+
+        // 4. Hockey Canvas & Bot Anti-Pinning Physics
+        const canvas = document.getElementById('hockey-canvas');
+        const ctx = canvas.getContext('2d');
+        let width = 0, height = 0;
+        let isRunning = false;
+        let userScore = 0, botScore = 0;
+
+        const puck = { x: 0, y: 0, vx: 0, vy: 0, r: 16 };
+        const player = { x: 0, y: 0, r: 26 };
+        const bot = { x: 0, y: 0, r: 26, retreatTimer: 0 };
+
+        function resize() {
+          const wrapper = document.getElementById('canvas-wrapper');
+          width = canvas.width = wrapper.clientWidth;
+          height = canvas.height = wrapper.clientHeight;
+          resetPositions();
+        }
+        window.addEventListener('resize', resize);
+
+        function resetPositions() {
+          puck.x = width / 2; puck.y = height / 2;
+          puck.vx = 0; puck.vy = 0;
+          player.x = width / 2; player.y = height * 0.82;
+          bot.x = width / 2; bot.y = height * 0.18;
+          bot.retreatTimer = 0;
+        }
+
+        // Pointer input for player mallet
+        canvas.addEventListener('pointermove', (e) => {
+          if (!isRunning) return;
+          const rect = canvas.getBoundingClientRect();
+          const targetX = e.clientX - rect.left;
+          const targetY = e.clientY - rect.top;
+          // Constrain player to lower half
+          player.x = Math.max(player.r, Math.min(width - player.r, targetX));
+          player.y = Math.max(height * 0.52 + player.r, Math.min(height - player.r, targetY));
+        });
+
+        // 5. Game Loop & Anti-Trapping AI
+        function updatePhysics() {
+          puck.x += puck.vx;
+          puck.y += puck.vy;
+          puck.vx *= 0.988;
+          puck.vy *= 0.988;
+
+          // Wall Collisions & Ejection
+          const goalWidth = width * 0.38;
+          const goalLeft = (width - goalWidth) / 2;
+          const goalRight = goalLeft + goalWidth;
+
+          // Side walls bounce
+          if (puck.x - puck.r <= 0) {
+            puck.x = puck.r;
+            puck.vx = Math.max(Math.abs(puck.vx) * 0.85, 4.5);
+          } else if (puck.x + puck.r >= width) {
+            puck.x = width - puck.r;
+            puck.vx = -Math.max(Math.abs(puck.vx) * 0.85, 4.5);
+          }
+
+          // Top / Bottom walls (outside goal post)
+          if (puck.y - puck.r <= 0) {
+            if (puck.x > goalLeft && puck.x < goalRight) {
+              // GOAL SCORED BY PLAYER! Points awarded ONLY on goals!
+              userScore++;
+              document.getElementById('game-score').textContent = userScore;
+              const coins = parseInt(getStorage('coins', '50'), 10);
+              setStorage('coins', (coins + 15).toString());
+              showToast('GOAL! +15 Coins awarded! ⚽');
+              resetPositions();
+              return;
+            } else {
+              puck.y = puck.r;
+              puck.vy = Math.max(Math.abs(puck.vy) * 0.85, 4.5);
+            }
+          } else if (puck.y + puck.r >= height) {
+            if (puck.x > goalLeft && puck.x < goalRight) {
+              // Bot scored
+              botScore++;
+              document.getElementById('bot-score').textContent = botScore;
+              showToast('Bot scored a goal!');
+              resetPositions();
+              return;
+            } else {
+              puck.y = height - puck.r;
+              puck.vy = -Math.max(Math.abs(puck.vy) * 0.85, 4.5);
+            }
+          }
+
+          // Anti-Pinning AI Bot Logic:
+          // Detect if puck is near side walls (< 45px) and close to bot
+          const nearWall = (puck.x < 45 || puck.x > width - 45);
+          const distToBot = Math.hypot(bot.x - puck.x, bot.y - puck.y);
+          if (nearWall && distToBot < bot.r + puck.r + 30) {
+            // Trigger retreat timer to prevent pinning
+            bot.retreatTimer = 25;
+            // Wall ejection impulse away from wall
+            puck.vx = (puck.x < width / 2 ? 6.5 : -6.5);
+          }
+
+          if (bot.retreatTimer > 0) {
+            bot.retreatTimer--;
+            // Bot backs off towards its goal center to give space
+            bot.x += (width / 2 - bot.x) * 0.12;
+            bot.y += (height * 0.15 - bot.y) * 0.12;
+          } else {
+            // Normal tracking AI
+            const targetX = Math.max(bot.r, Math.min(width - bot.r, puck.x));
+            const targetY = puck.y < height * 0.48 ? puck.y - 10 : height * 0.18;
+            bot.x += (targetX - bot.x) * 0.085;
+            bot.y += (targetY - bot.y) * 0.085;
+          }
+
+          // Mallet Collisions (Elastic Hit)
+          handleMalletCollision(player);
+          handleMalletCollision(bot);
+        }
+
+        function handleMalletCollision(mallet) {
+          const dx = puck.x - mall
